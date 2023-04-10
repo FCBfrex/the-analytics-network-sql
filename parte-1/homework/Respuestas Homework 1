@@ -1,0 +1,65 @@
+--1
+select * 
+from stg.product_master
+where categoria = 'Electro'
+
+--2
+select * 
+from stg.product_master
+where origen = 'China'
+
+--3
+select * 
+from stg.product_master
+where categoria = 'Electro'
+order by nombre
+
+--4
+select * 
+from stg.product_master
+where subsubcategoria = 'TV' and is_active = 'true' 
+
+--5
+select * 
+from stg.store_master
+where pais = 'Argentina'
+order by fecha_apertura asc
+--Hay una fila que tiene fecha de apertura null
+
+--6
+select * 
+from stg.order_line_sale
+order by fecha
+fetch first 5 rows only
+-- misma fecha, cual será el otro criterio de selección? traer los primeros 5 que encuentra en esa última fecha?
+
+--7
+select * 
+from stg.super_store_count
+order by fecha desc
+fetch first 10 rows only
+
+--8
+select * 
+from stg.product_master
+where categoria = 'Electro' and subsubcategoria not in ('Soporte','Control remoto' )
+
+--9
+select * 
+from stg.order_line_sale
+where venta > 100000 and moneda = 'ARS'
+
+--10
+select * 
+from stg.order_line_sale
+where fecha > '2022-10-01'
+
+--11
+select * 
+from stg.product_master
+where ean is not null
+
+--12
+select * 
+from stg.order_line_sale
+where fecha between '2022-10-01' and '2022-11-10'
