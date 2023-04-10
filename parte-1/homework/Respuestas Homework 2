@@ -1,0 +1,89 @@
+---Tarea Clase 2
+
+--1
+select distinct pais 
+from stg.store_master
+
+--2
+select distinct subcategoria, count(distinct codigo_producto) as Cantidad
+from stg.product_master
+where is_active = true 
+group by subcategoria
+
+--3 
+
+--opción con join
+select ols.orden, 
+sum(ols.venta) as Valor_venta
+from stg.order_line_sale as ols
+inner join stg.store_master as sm
+on ols.tienda = sm.codigo_tienda
+where ols.venta > 100000 AND sm.codigo_tienda in (1,2,3)
+group by ols.orden
+
+-- opcións sin join
+select *
+from stg.order_line_sale
+where tienda = 3 AND venta > 100000
+
+--4
+
+select moneda, sum(descuento) as Descuento
+from stg.order_line_sale
+where fecha between '2022-10-01' and '2022-10-30' AND descuento is not null
+group by moneda
+
+--5
+select orden, fecha, impuestos from stg.order_line_sale
+where fecha between '2022-01-01' and '2022-12-31' AND tienda in (8,9)
+
+--6
+select count(*) as Cantidad_ordenes_con_Credito from stg.order_line_sale
+where creditos is not null
+
+--7
+
+select tienda, round((sum(coalesce(descuento,0)) / sum(coalesce(venta,0)))*-100,2) as porcentaje_porciento from stg.order_line_sale
+group by tienda
+
+--8
+
+select tienda, fecha, sum(inv.inicial + inv.final)/2 as Promedio
+from stg.inventory as inv
+group by tienda, fecha
+
+--9
+
+select producto, sum(coalesce(venta,0)+coalesce(descuento,0)) as Venta_neta, round((sum(coalesce(descuento,0)) / sum(coalesce(venta,0)))*-100,2) as Porcentaje_descuento
+from stg.order_line_sale
+where tienda in (1,2,3,5)
+group by producto
+
+--10
+
+select tienda, cast(fecha as varchar), conteo from stg.market_count
+union all
+select tienda, fecha, conteo from stg.super_store_count
+
+--11
+
+select nombre from stg.product_master
+where is_active = true AND nombre like '%PHILIPS%'
+
+--12
+
+select tienda, moneda, sum(coalesce(venta,0)) as Monto_vendido from stg.order_line_sale
+group by tienda, moneda
+order by Monto_vendido desc
+
+--13
+
+select producto, moneda, round(sum(coalesce(venta,0))/sum(coalesce(cantidad,0)),2) as Promedio  from stg.order_line_sale
+group by producto, moneda
+
+--14
+
+select orden, round( (sum(coalesce(impuestos,0))) / ((sum(coalesce(venta,0))) + sum(coalesce(descuento,0)))*100,2) as Porcentaje_de_impuesto
+from stg.order_line_sale
+group by orden
+order by orden
