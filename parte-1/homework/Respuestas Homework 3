@@ -1,0 +1,153 @@
+--Homework Clase 3
+
+--1 
+select pm.codigo_producto, pm.nombre, pm.categoria,
+case
+	when pm.color is null then 'Unknown'
+	else pm.color
+	end as Color
+from stg.product_master pm
+where nombre like '%Samsung%' OR nombre like '%PHILIPS%' OR nombre Like '%SAMSUNG%'
+
+--2
+select sm.pais, sm.provincia, ols.moneda, sum(ols.venta) as Ventas_Brutas, sum(impuestos) as Impuestos
+from stg.order_line_sale ols
+left join stg.store_master sm
+on ols.tienda = sm.codigo_tienda
+group by sm.pais, sm.provincia, ols.moneda
+
+--3
+select pm.subcategoria, ols.moneda, sum(ols.venta)
+from stg.product_master pm
+left join stg.order_line_sale ols
+on ols.producto = pm.codigo_producto
+where moneda is not null
+group by pm.subcategoria, ols.moneda
+order by pm.subcategoria, ols.moneda
+
+--4
+select pm.subcategoria, sum(ols.cantidad) as Cantidad, concat(sm.pais, '-', sm.provincia) as Lugar
+from stg.product_master pm
+left join stg.order_line_sale ols
+on ols.producto = pm.codigo_producto
+left join stg.store_master sm
+on ols.tienda = sm.codigo_tienda
+where ols.cantidad is not null
+group by pm.subcategoria, Lugar
+
+--5
+select sm.nombre, sum(coalesce(ssc.conteo,0)) as Entradas
+from stg.store_master sm
+left join stg.super_store_count ssc
+on sm.codigo_tienda = ssc.tienda 
+where sm.fecha_apertura < TO_DATE(ssc.fecha, 'YYYY-MM-DD') 
+group by sm.nombre
+
+--6
+select CAST(DATE_TRUNC('month', fecha) AS date) AS mes, inv.sku, sum(inv.inicial + inv.final)/2 as Promedio, sm.nombre
+from stg.inventory inv
+left join stg.product_master pm 
+on pm.codigo_producto = inv.sku 
+left join stg.store_master sm
+on sm.codigo_tienda = inv.tienda
+group by mes, tienda, inv.sku, sm.nombre
+
+--7
+select case
+	when pm.material is null then 'Unknown'
+	when LOWER(pm.material) = 'plastico' then 'plastico'
+	else pm.material
+	end as material,
+	sum(ols.cantidad)
+from stg.product_master pm
+left join stg.order_line_sale ols
+on pm.codigo_producto = ols.producto
+Group by material
+-- No lograba unir los plasticos y con el detalle de la clase se pudo como esta a continuación
+
+with material as (
+
+SELECT 
+	*,
+    CASE WHEN material IS NULL THEN 'Unknown'
+    when material = 'PLASTICO' THEN 'Plastico'
+    when material = 'plastico' THEN 'Plastico'
+    ELSE material END as material_consolidado
+FROM stg.order_line_sale ols
+LEFT JOIN stg.product_master pm
+    ON ols.producto = pm.codigo_producto
+)		
+
+select material_consolidado, sum(cantidad)
+from material
+group by material_consolidado
+
+--8
+select *,
+CASE 
+WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+WHEN moneda = 'URU' THEN cotizacion_usd_uru
+END as tdc,
+venta / 
+  CASE 
+    WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+    WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+    WHEN moneda = 'URU' THEN cotizacion_usd_uru
+  END as Venta_USD
+from stg.order_line_sale ols
+left join stg.monthly_average_fx_rate mafr
+ON EXTRACT(MONTH FROM ols.fecha) = EXTRACT(MONTH FROM mafr.mes)
+
+--9
+with Valor as (
+select *,
+CASE 
+WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+WHEN moneda = 'URU' THEN cotizacion_usd_uru
+END as tdc,
+venta / 
+  CASE 
+    WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+    WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+    WHEN moneda = 'URU' THEN cotizacion_usd_uru
+  END as Venta_USD
+from stg.order_line_sale ols
+left join stg.monthly_average_fx_rate mafr
+ON EXTRACT(MONTH FROM ols.fecha) = EXTRACT(MONTH FROM mafr.mes)
+	)
+SELECT SUM(Venta_USD) AS Total_Venta_USD
+FROM Valor
+
+--10
+with cte as (
+select *,
+venta / 
+  CASE 
+    WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+    WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+    WHEN moneda = 'URU' THEN cotizacion_usd_uru
+  END as Venta_USD,
+coalesce(creditos,0) / 
+  CASE 
+    WHEN moneda = 'EUR' THEN cotizacion_usd_eur
+    WHEN moneda = 'ARS' THEN cotizacion_usd_peso
+    WHEN moneda = 'URU' THEN cotizacion_usd_uru
+  END as Promo_USD
+from stg.order_line_sale ols
+left join stg.monthly_average_fx_rate mafr
+ON EXTRACT(MONTH FROM ols.fecha) = EXTRACT(MONTH FROM mafr.mes)
+	)
+select *, (venta_usd + promo_usd) - (costo_promedio_usd * cantidad) as Margen from 
+cte 
+left join stg.cost cos
+ON cos.codigo_producto = cte.producto
+
+--11
+select orden, subcategoria, COUNT(DISTINCT producto)
+from stg.order_line_sale ols
+left join stg.product_master pm
+ON ols.producto = pm.codigo_producto
+group by orden, subcategoria
+
